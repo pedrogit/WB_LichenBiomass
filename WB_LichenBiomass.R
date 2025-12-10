@@ -138,12 +138,19 @@ reComputeLichenBiomassMap <- function(sim) {
   browser()
   message("Recomputing sim$WB_LichenBiomassMap for ", 
           format(ncell(sim$WB_HartJohnstoneForestClassesMap), scientific = FALSE), " pixels..")
-  
+
+  # Get a current age map from cohortData 
+  currentCohortAgeMap <- LandR::standAgeMapGenerator(
+    sim$cohortData,
+    sim$pixelGroupMap
+  )
+  names(currentCohortAgeMap) <- "current_age"
+  varnames(currentCohortAgeMap) <- "current_age"
   
   sim$WB_LichenBiomassMap <- app(c(
     sim$EcoProvincesMap, 
     sim$WB_HartJohnstoneForestClassesMap, 
-    sim$standAgeMap
+    currentCohortAgeMap
     ),
     fun = function(x) predict_lichen_biomass(x[1], x[2], x[3])
   )
