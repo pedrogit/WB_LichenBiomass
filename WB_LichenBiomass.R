@@ -181,7 +181,7 @@ reComputeLichenBiomassMap <- function(sim) {
     )
     
     # Convert to factor and add proper labels
-    values(sim$WB_HartJohnstoneForestClassesMap) <- as.factor(values(sim$WB_HartJohnstoneForestClassesMap))
+    sim$WB_HartJohnstoneForestClassesMap <- terra::as.factor(sim$WB_HartJohnstoneForestClassesMap)
     levels(sim$WB_HartJohnstoneForestClassesMap) <- data.frame(
       value = c(1L, 2L, 3L, 4L, 5L, 6L),
       class = c("deci", "mixed", "conimix", "jackpine", "larch", "spruce")
