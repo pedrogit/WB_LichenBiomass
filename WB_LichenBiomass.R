@@ -170,13 +170,45 @@ reComputeLichenBiomassMap <- function(sim) {
   # varnames(currentCohortAgeMap) <- "current_age"
   
   
-    sim$EcoProvincesMap, 
-    sim$WB_HartJohnstoneForestClassesMap, 
+  # This is very slow. Try instead to isolate the unique values, compute the 
+  # biomass for those values and use rasterizeReduced to create the map.
     currentCohortAgeMap
-    ),
-    fun = function(x) predict_lichen_biomass(x[1], x[2], x[3])
-  )
 
+  combined_rast <- currentCohortAgeMap * 10000 + sim$EcoProvincesMap * 10 + sim$WB_HartJohnstoneForestClassesMap
+  names(combined_rast) <- "combined_val"
+  combined_rast_unique_values <- unique(values(combined_rast))
+  age <- combined_rast_unique_values %/% 10000
+  eco_prov <- (combined_rast_unique_values - age * 10000) %/% 10
+  for_class <- combined_rast_unique_values - age* 10000 - eco_prov * 10
+  biomass <- data.table(
+    combined_val = combined_rast_unique_values, 
+    biomass = predict_lichen_biomass(eco_prov, for_class, age)
+  )
+  names(biomass) <- c("combined_val", "biomass")
+  
+  # Biomass is in kg/ha. We have to divide by 10000 and multiply by the pixel size
+  biomass$biomass <- biomass$biomass / 10000 * prod(res(sim$pixelGroupMap))
+  
+  sim$WB_LichenBiomassMap <- SpaDES.tools::rasterizeReduced(
+    reduced = biomass,
+    fullRaster = combined_rast,
+    mapcode = "combined_val", 
+    newRasterCols = "biomass"
+  )
+  
+  # sim$WB_LichenBiomassMap <- app(c(
+  #   sim$EcoProvincesMap, 
+  #   sim$WB_HartJohnstoneForestClassesMap, 
+  #   currentCohortAgeMap
+  #   ),
+  #   fun = function(x) predict_lichen_biomass(x[1], x[2], x[3])
+  # )
+  
+  # Compute the biomass for the non forested area using reclass
+  # We must convert mean_biomass per ha to the area of a pixel.
+  # e.g. if the table says 2kg/ha and one pixel is 0.25 ha then we must divide by 4
+  # mean_biomass * pixel
+  
   # Assign it a name 
   names(sim$WB_LichenBiomassMap) <- "lichenBiomass"
   # varnames(sim$WB_LichenBiomassMap) <- "lichenBiomass"
