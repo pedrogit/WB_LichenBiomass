@@ -29,10 +29,13 @@ defineModule(sim, list(
                  objectClass = "SpatVector", 
                  desc = "", 
                  sourceURL = "https://dmap-prod-oms-edc.s3.us-east-1.amazonaws.com/ORD/Ecoregions/cec_na/NA_CEC_Eco_Level3.zip"),
-    expectsInput(objectName = "ageMap", 
-                 objectClass = "SpatVector", 
-                 desc = "", 
-                 sourceURL = NA)
+    expectsInput("cohortData",  "data.table",
+                 desc = paste("Initial community table, created from available biomass (g/m2)",
+                              "age and species cover data, as well as ecozonation information",
+                              "Columns: B, pixelGroup, speciesCode")),
+    expectsInput("pixelGroupMap", "SpatRast",
+                 desc = "Initial community map that has mapcodes match initial community table")
+    
   ),
   outputObjects = rbind(
     createsOutput(objectName = "WB_LichenBiomassMap", 
@@ -46,6 +49,26 @@ doEvent.WB_LichenBiomass = function(sim, eventTime, eventType) {
     eventType,
     
     init = {
+      # We initiate a fake cohortData here because it is dependent on sim$pixelGroupMap
+      # We do that only if it is not supplied by another module (like Biomass_core)
+      # We have also set loadOrder to "after Biomass_core" so pixelGroupMap should be initialized
+      if (!suppliedElsewhere(sim$cohortData) && !is.null(sim$pixelGroupMap)) {
+        nbGroup <- length(unique(values(sim$pixelGroupMap)))
+        message("##############################################################################")   
+        message("cohortData not supplied.")   
+        message("Please provide one. Generating random cohort data for ", nbGroup, " pixel groups...")
+        sim$cohortData <- getRandomCohortData(nbPixelGroup = nbGroup, 
+                                              pixelSize = res(sim$pixelGroupMap)[1])
+      }
+      
+      if(!suppliedElsewhere("WB_HartJohnstoneForestClassesMap", sim) && !is.null(sim$cohortData) && !is.null(sim$pixelGroupMap)){
+        source("https://raw.githubusercontent.com/pedrogit/WB_HartJohnstoneForestClasses/refs/heads/main/R/WB_HartJohnstoneForestClasses.r")
+        sim$WB_HartJohnstoneForestClassesMap <- classifyStand(
+          cohortData = sim$cohortData, 
+          pixelGroupMap = sim$pixelGroupMap,
+          time = time(sim)
+        )
+      }
       sim <- scheduleEvent(sim, time(sim), "WB_LichenBiomass", "reComputeLichenBiomassMap", 2)
     },
     
@@ -91,7 +114,7 @@ m4_xmid <- list(
 m4_scal <- 3.0647
 
 # Function predicting lichen biomass (kg/ha).
-# TSSRF (Time Since Stand-Replacing Fire) is approximated by sim$standAgeMap
+# TSSRF (Time Since Stand-Replacing Fire) is approximated by the sim$cohortData age column
 predict_lichen_biomass <- function(ecoprov, standtype, TSSRF) {
   # --- Logistic regression (presence probability) ---
   logit <- g2_coefs$Intercept +
@@ -135,7 +158,6 @@ predict_lichen_biomass <- function(ecoprov, standtype, TSSRF) {
 }
 
 reComputeLichenBiomassMap <- function(sim) {
-  browser()
   message("Recomputing sim$WB_LichenBiomassMap for ", 
           format(ncell(sim$WB_HartJohnstoneForestClassesMap), scientific = FALSE), " pixels..")
 
@@ -145,9 +167,9 @@ reComputeLichenBiomassMap <- function(sim) {
     sim$pixelGroupMap
   )
   names(currentCohortAgeMap) <- "current_age"
-  varnames(currentCohortAgeMap) <- "current_age"
+  # varnames(currentCohortAgeMap) <- "current_age"
   
-  sim$WB_LichenBiomassMap <- app(c(
+  
     sim$EcoProvincesMap, 
     sim$WB_HartJohnstoneForestClassesMap, 
     currentCohortAgeMap
@@ -157,45 +179,34 @@ reComputeLichenBiomassMap <- function(sim) {
 
   # Assign it a name 
   names(sim$WB_LichenBiomassMap) <- "lichenBiomass"
+  # varnames(sim$WB_LichenBiomassMap) <- "lichenBiomass"
   
   return(invisible(sim))
 }
 
 .inputObjects <- function(sim) {
   userTags <- c(currentModule(sim), "function:.inputObjects")
-  ##############################################################################
-  # Generate a fake WB_HartJohnstoneForestClassesMap if it is not supplied
-  ##############################################################################
-  if(!suppliedElsewhere("WB_HartJohnstoneForestClassesMap", sim)){
-    rastWidth <- 1000
+  if(!suppliedElsewhere("pixelGroupMap", sim)){
+    nbGroup <- 200
+    pixelGroupRastWidth <- 1000
     message("##############################################################################")   
-    message("WB_HartJohnstoneForestClassesMap not supplied.")   
-    message("Please couple with the WB_HartJohnstoneForestClasses module. ")   
-    message("Creating random map ", rastWidth, " pixels by ", rastWidth, " pixels for 6 forest ")   
-    message("classes (\"deci (1)\", \"mixed (2)\", \"conimix (3)\", \"jackpine (4)\", ")   
-    message("\"larch (5)\" and \"spruce (6)\")...")
-
-    sim$WB_HartJohnstoneForestClassesMap <- Cache(
+    message("pixelGrouMap not supplied.")   
+    message("Please provide one. Creating random map ", pixelGroupRastWidth, " pixels by ", 
+            pixelGroupRastWidth, " pixels with ", nbGroup, " groups...")
+    
+    sim$pixelGroupMap <- Cache(
       getRandomCategoricalMap,
       origin = c(-667296, 1758502),
-      ncol = rastWidth,
-      nrow = rastWidth,
+      ncol = pixelGroupRastWidth,
+      nrow = pixelGroupRastWidth,
       crs = "ESRI:102002",
-      nbregion = 2000,
-      valuevect = 1:6,
+      nbregion = nbGroup,
       seed = 100,
-      userTags = c(userTags, "WB_HartJohnstoneForestClassesMap")
+      userTags = c(userTags, "pixelGroupMap"), 
+      omitArgs = c("userTags")
     )
-    
-    # Convert to factor and add proper labels
-    sim$WB_HartJohnstoneForestClassesMap <- terra::as.factor(sim$WB_HartJohnstoneForestClassesMap)
-    levels(sim$WB_HartJohnstoneForestClassesMap) <- data.frame(
-      value = c(1L, 2L, 3L, 4L, 5L, 6L),
-      class = c("deci", "mixed", "conimix", "jackpine", "larch", "spruce")
-    )
-    names(sim$WB_HartJohnstoneForestClassesMap) <- "standtype"
   }
-
+  
   if (!is.null(sim$WB_HartJohnstoneForestClassesMap)){
     baseRast <- sim$WB_HartJohnstoneForestClassesMap
   }
@@ -208,32 +219,6 @@ reComputeLichenBiomassMap <- function(sim) {
   else {
     stop(paste("At least one of WB_HartJohnstoneForestClassesMap, pixelGroupMap or ",
                "rasterToMatch must be defined in sim before WB_LichenBiomass can be initialized..."))
-  }
-  # baseExtent <- ext(baseRast)
-  # baseCRS <- crs(baseRast)
-  
-  ##############################################################################
-  # Create a dummy standAgeMap
-  ##############################################################################
-  if(!suppliedElsewhere("standAgeMap", sim)){
-    message("##############################################################################")   
-    message("standAgeMap not supplied.")   
-    message("Please couple with the Biomass_core module which simulate stand age...")  
-    message("Creating random map ", rastWidth, " pixels by ", rastWidth, " pixels ")   
-    message("with ages from 0 to 150...")
-    sim$standAgeMap <- Cache(
-      getRandomCategoricalMap,
-      # origin = c(-667296, 1758502),
-      origin = c(xmin(baseRast), ymin(baseRast)),
-      ncol = ncol(baseRast),
-      nrow = nrow(baseRast),
-      crs = crs(baseRast),
-      nbregion = 2000,
-      valuevect = 0:150,
-      seed = 100,
-      userTags = c(userTags, "standAgeMap")
-    )
-    names(sim$standAgeMap) <- "standage"
   }
   
   ##############################################################################
