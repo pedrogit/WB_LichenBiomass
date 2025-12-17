@@ -49,26 +49,7 @@ doEvent.WB_LichenBiomass = function(sim, eventTime, eventType) {
     eventType,
     
     init = {
-      # We initiate a fake cohortData here because it is dependent on sim$pixelGroupMap
-      # We do that only if it is not supplied by another module (like Biomass_core)
-      # We have also set loadOrder to "after Biomass_core" so pixelGroupMap should be initialized
-      if (!suppliedElsewhere(sim$cohortData) && !is.null(sim$pixelGroupMap)) {
-        nbGroup <- length(unique(values(sim$pixelGroupMap)))
-        message("##############################################################################")   
-        message("cohortData not supplied.")   
-        message("Please provide one. Generating random cohort data for ", nbGroup, " pixel groups...")
-        sim$cohortData <- getRandomCohortData(nbPixelGroup = nbGroup, 
-                                              pixelSize = res(sim$pixelGroupMap)[1])
-      }
-      
-      if(!suppliedElsewhere("WB_HartJohnstoneForestClassesMap", sim) && !is.null(sim$cohortData) && !is.null(sim$pixelGroupMap)){
-        source("https://raw.githubusercontent.com/pedrogit/WB_HartJohnstoneForestClasses/refs/heads/main/R/WB_HartJohnstoneForestClasses.r")
-        sim$WB_HartJohnstoneForestClassesMap <- classifyStand(
-          cohortData = sim$cohortData, 
-          pixelGroupMap = sim$pixelGroupMap,
-          time = time(sim)
-        )
-      }
+      sim <- Init(sim)
       sim <- scheduleEvent(sim, time(sim), "WB_LichenBiomass", "reComputeLichenBiomassMap", 2)
     },
     
@@ -157,6 +138,30 @@ predict_lichen_biomass <- function(ecoprov, standtype, TSSRF) {
   return(expected_biomass)
 }
 
+Init <- function(sim){
+  # We initiate a fake cohortData here because it is dependent on sim$pixelGroupMap
+  # We do that only if it is not supplied by another module (like Biomass_core)
+  # We have also set loadOrder to "after Biomass_core" so pixelGroupMap should be initialized
+  if (!suppliedElsewhere(sim$cohortData) && !is.null(sim$pixelGroupMap)) {
+    nbGroup <- length(unique(values(sim$pixelGroupMap)))
+    message("##############################################################################")   
+    message("cohortData not supplied.")   
+    message("Please provide one. Generating random cohort data for ", nbGroup, " pixel groups...")
+    sim$cohortData <- getRandomCohortData(nbPixelGroup = nbGroup, 
+                                          pixelSize = res(sim$pixelGroupMap)[1])
+  }
+  
+  if(!suppliedElsewhere("WB_HartJohnstoneForestClassesMap", sim) && !is.null(sim$cohortData) && !is.null(sim$pixelGroupMap)){
+    source("https://raw.githubusercontent.com/pedrogit/WB_HartJohnstoneForestClasses/refs/heads/main/R/WB_HartJohnstoneForestClasses.r")
+    sim$WB_HartJohnstoneForestClassesMap <- classifyStand(
+      cohortData = sim$cohortData, 
+      pixelGroupMap = sim$pixelGroupMap,
+      time = time(sim)
+    )
+  }
+  return(invisible(sim))
+}
+
 reComputeLichenBiomassMap <- function(sim) {
   message("Recomputing sim$WB_LichenBiomassMap for ", 
           format(ncell(sim$WB_HartJohnstoneForestClassesMap), scientific = FALSE), " pixels..")
@@ -234,7 +239,7 @@ reComputeLichenBiomassMap <- function(sim) {
       crs = "ESRI:102002",
       nbregion = nbGroup,
       seed = 100,
-      userTags = c(userTags, "pixelGroupMap"), 
+      userTags = c(userTags, "WB_pixelGroupMap"), 
       omitArgs = c("userTags")
     )
   }
