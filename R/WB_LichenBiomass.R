@@ -31,8 +31,8 @@ m4_xmid <- list(
 )
 m4_scal <- 3.0647
 
-# Function predicting lichen biomass (kg/ha).
-# TSSRF (Time Since Stand-Replacing Fire) is approximated by the sim$cohortData age column
+# Function predicting lichen biomass (kg/ha) from ecoprovince, stand type and TSSRF vectors.
+# TSSRF (Time Since Stand-Replacing Fire) is approximated by the cohortData age column.
 predict_lichen_biomass <- function(ecoprov, standtype, TSSRF) {
   # --- Logistic regression (presence probability) ---
   logit <- g2_coefs$Intercept +
@@ -98,10 +98,17 @@ computeLichenBiomassMap <- function(
   eco_prov <- (combined_rast_unique_values - age * 10000) %/% 10
   for_class <- combined_rast_unique_values - age* 10000 - eco_prov * 10
   biomass <- data.table(
-    combined_val = combined_rast_unique_values, 
+    combined_val = combined_rast_unique_values,
+    for_class = for_class,
     biomass = predict_lichen_biomass(eco_prov, for_class, age)
   )
-  names(biomass) <- c("combined_val", "biomass")
+  names(biomass) <- c("combined_val", "for_class", "biomass")
+
+  # Since the model does not predict values when standtype = deci, mixed and larch
+  # return some hardcoded values taken from Greuel, Degre-Timmons (2021) Table 4.
+  biomass$biomass[biomass$for_class == 1] <- 110.34 # deciduous
+  biomass$biomass[biomass$for_class == 2] <- 216.60 # deciduous-conifer mix
+  biomass$biomass[biomass$for_class == 5] <- 6.75   # larch
   
   # Biomass is in kg/ha. We have to divide by 10000 and multiply by the pixel size
   biomass$biomass <- biomass$biomass / 10000 * prod(res(pixelGroupMap))
