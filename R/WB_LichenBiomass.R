@@ -87,55 +87,51 @@ computeLichenBiomassMap <- function(
     pixelGroupMap
   )
   names(currentCohortAgeMap) <- "current_age"
-  # varnames(currentCohortAgeMap) <- "current_age"
+
+  # Isolate the rasters stack unique values
+  stackedMap <- c(currentCohortAgeMap, ecoProvincesMap, HJForestclassesMap)
   
-  # Isolate the unique values, compute the biomass for those values
-  # and use rasterizeReduced to create the map.
-  combined_rast <- currentCohortAgeMap * 10000 + ecoProvincesMap * 10 + HJForestclassesMap
-  names(combined_rast) <- "combined_val"
-  combined_rast_unique_values <- unique(values(combined_rast))
-  age <- combined_rast_unique_values %/% 10000
-  eco_prov <- (combined_rast_unique_values - age * 10000) %/% 10
-  for_class <- combined_rast_unique_values - age* 10000 - eco_prov * 10
-  biomass <- data.table(
-    combined_val = combined_rast_unique_values,
-    for_class = for_class,
-    biomass = predict_lichen_biomass(eco_prov, for_class, age)
-  )
-  names(biomass) <- c("combined_val", "for_class", "biomass")
+  # Create a unique ID for each combination of unique values
+  allVals <- as.data.table(values(stackedMap))
+  allVals[, id := .GRP, by = .(current_age, ecoprov, standtype)]
+  
+  # Assign the IDs back to a new raster
+  IDMap <- setValues(currentCohortAgeMap, allVals$id)
+  names(IDMap) <- c("id")
+  
+  # Add the Id raster to the stack
+  stackedMap <- c(stackedMap, IDMap)
+  
+  # Determine the unique values for which to compute the biomass values 
+  # (this is much faster than computing the biomass for every raster pixels)
+  uniqueValsDT <- as.data.table(unique(values(stackedMap)))
+  # names(uniqueValsDT) <- c("age", "eco_prov", "for_class", "id")
+  
+  # Compute the biomass for forested areas
+  uniqueValsDT[, biomass := predict_lichen_biomass(ecoprov, standtype, current_age)]
 
   # Since the model does not predict values when standtype = deci, mixed and larch
   # return some hardcoded values taken from Greuel, Degre-Timmons (2021) Table 4.
-  biomass$biomass[biomass$for_class == 1] <- 110.34 # deciduous
-  biomass$biomass[biomass$for_class == 2] <- 216.60 # deciduous-conifer mix
-  biomass$biomass[biomass$for_class == 5] <- 6.75   # larch
+  uniqueValsDT$biomass[uniqueValsDT$standtype == 1] <- 110.34 # deciduous
+  uniqueValsDT$biomass[uniqueValsDT$standtype == 2] <- 216.60 # deciduous-conifer mix
+  uniqueValsDT$biomass[uniqueValsDT$standtype == 5] <- 6.75   # larch
+  
+  #
   
   # Biomass is in kg/ha. We have to divide by 10000 and multiply by the pixel size
-  biomass$biomass <- biomass$biomass / 10000 * prod(res(pixelGroupMap))
+  uniqueValsDT$biomass <- uniqueValsDT$biomass / 10000 * prod(res(pixelGroupMap))
   
+  # browser()
+  # Use rasterizeReduced to create the map.
   lichenBiomassMap <- SpaDES.tools::rasterizeReduced(
-    reduced = biomass,
-    fullRaster = combined_rast,
-    mapcode = "combined_val", 
+    reduced = uniqueValsDT,
+    fullRaster = IDMap,
+    mapcode = "id", 
     newRasterCols = "biomass"
   )
-  
-  # slower code
-  # lichenBiomassMap <- app(c(
-  #   ecoProvincesMap, 
-  #   HJForestClassesMap, 
-  #   currentCohortAgeMap
-  #   ),
-  #   fun = function(x) predict_lichen_biomass(x[1], x[2], x[3])
-  # )
-  
-  # Compute the biomass for the non forested area using reclass
-  # We must convert mean_biomass per ha to the area of a pixel.
-  # e.g. if the table says 2kg/ha and one pixel is 0.25 ha then we must divide by 4
-  # mean_biomass * pixel
-  
+
   # Assign it a name 
   names(lichenBiomassMap) <- "lichenBiomass"
-  # varnames(sim$WB_LichenBiomassMap) <- "lichenBiomass"
+
   return(lichenBiomassMap)
 }
