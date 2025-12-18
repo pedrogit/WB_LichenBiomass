@@ -23,18 +23,23 @@ defineModule(sim, list(
                  objectClass = "SpatRast",
                  desc = paste("WB_HartJohnstoneForestClassesMap from the ",
                               "WB_HartJohnstoneForestClasses module used as ",
-                              "standtype"),
+                              "standtype."),
                  sourceURL = NA),
     expectsInput(objectName = "EcoProvincesMap", 
                  objectClass = "SpatVector", 
-                 desc = "", 
+                 desc = "SpatRaster of north american ecoprovinces.", 
                  sourceURL = "https://dmap-prod-oms-edc.s3.us-east-1.amazonaws.com/ORD/Ecoregions/cec_na/NA_CEC_Eco_Level3.zip"),
     expectsInput("cohortData",  "data.table",
-                 desc = paste("Initial community table, created from available biomass (g/m2)",
-                              "age and species cover data, as well as ecozonation information",
-                              "Columns: B, pixelGroup, speciesCode")),
+                 desc = paste("Initial community table, created from available ",
+                              "biomass (g/m2) age and species cover data, as well ",
+                              "as ecozonation information",
+                              "Columns: B, pixelGroup, speciesCode.")),
     expectsInput("pixelGroupMap", "SpatRast",
-                 desc = "Initial community map that has mapcodes match initial community table")
+                 desc = "Initial community map that has mapcodes match initial ",
+                        "community table"),
+    expectsInput("WB_MeanBiomassPerVegClasses", "data.table",
+                 desc = "CSV table of static values for mean biomass per MVI and ",
+                        "some HartJohnstone forest classes")
     
   ),
   outputObjects = rbind(
@@ -94,7 +99,9 @@ reComputeLichenBiomassMap <- function(sim) {
     sim$cohortData,
     sim$pixelGroupMap,
     sim$EcoProvincesMap,
-    sim$WB_HartJohnstoneForestClassesMap
+    sim$WB_HartJohnstoneForestClassesMap,
+    sim$WB_NonForestedVegClassesMap,
+    sim$WB_MeanBiomassPerVegClasses
   )
   
   return(invisible(sim))
@@ -178,6 +185,13 @@ reComputeLichenBiomassMap <- function(sim) {
     # sim$EcoProvincesMap <- sim$EcoProvincesMap[, c("ECOPROVINCE_NAME_EN")]
     # sim$EcoProvincesMap$ECOPROVINCE_NAME_EN <- as.factor(sim$EcoProvincesMap$ECOPROVINCE_NAME_EN)
   }
-  # ! ----- STOP EDITING ----- ! #
+
+  ##############################################################################
+  # Load the supplied biomass table if an alternative one is not provided by the 
+  # user. 
+  ##############################################################################
+  if(!suppliedElsewhere("WB_MeanBiomassPerVegClasses")){
+    sim$WB_MeanBiomassPerVegClasses <- fread(file.path(dataPath(sim), "meanBiomassPerVegClasses.csv"))
+  }
   return(invisible(sim))
 }

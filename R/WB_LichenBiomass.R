@@ -79,7 +79,9 @@ computeLichenBiomassMap <- function(
     cohortData,
     pixelGroupMap,
     ecoProvincesMap,
-    HJForestclassesMap
+    HJForestclassesMap,
+    nonForestedVegClassesMap,
+    biomassMeansPerVegClassesDT
 ){
   # Get a current age map from cohortData 
   currentCohortAgeMap <- LandR::standAgeMapGenerator(
@@ -87,9 +89,14 @@ computeLichenBiomassMap <- function(
     pixelGroupMap
   )
   names(currentCohortAgeMap) <- "current_age"
+  
+  # Merge the HJForestclassesMap and the nonForestedVegClassesMap together 
+  # so we have to deal with only one raster. HJForestclassesMap have precedence
+  # over nonForestedVegClassesMap.
+  mergedVegMap <- cover(HJForestclassesMap, nonForestedVegClassesMap)
 
   # Isolate the rasters stack unique values
-  stackedMap <- c(currentCohortAgeMap, ecoProvincesMap, HJForestclassesMap)
+  stackedMap <- c(currentCohortAgeMap, ecoProvincesMap, mergedVegMap)
   
   # Create a unique ID for each combination of unique values
   allVals <- as.data.table(values(stackedMap))
@@ -101,27 +108,21 @@ computeLichenBiomassMap <- function(
   
   # Add the Id raster to the stack
   stackedMap <- c(stackedMap, IDMap)
-  
   # Determine the unique values for which to compute the biomass values 
   # (this is much faster than computing the biomass for every raster pixels)
   uniqueValsDT <- as.data.table(unique(values(stackedMap)))
-  # names(uniqueValsDT) <- c("age", "eco_prov", "for_class", "id")
+  names(uniqueValsDT) <- c("age", "eco_prov", "veg_class", "id")
   
   # Compute the biomass for forested areas
-  uniqueValsDT[, biomass := predict_lichen_biomass(ecoprov, standtype, current_age)]
+  uniqueValsDT[, biomass := predict_lichen_biomass(eco_prov, veg_class, age)]
 
-  # Since the model does not predict values when standtype = deci, mixed and larch
-  # return some hardcoded values taken from Greuel, Degre-Timmons (2021) Table 4.
-  uniqueValsDT$biomass[uniqueValsDT$standtype == 1] <- 110.34 # deciduous
-  uniqueValsDT$biomass[uniqueValsDT$standtype == 2] <- 216.60 # deciduous-conifer mix
-  uniqueValsDT$biomass[uniqueValsDT$standtype == 5] <- 6.75   # larch
-  
-  #
+  # The model does not predict values for some forest 1 (deci), 2 (mixed) and 
+  # 5 (larch) and vegetabion classes, we take them from the provided table.
+  uniqueValsDT[biomassMeansPerVegClassesDT, on = "veg_class", biomass := i.mean_lichen_biomass]
   
   # Biomass is in kg/ha. We have to divide by 10000 and multiply by the pixel size
   uniqueValsDT$biomass <- uniqueValsDT$biomass / 10000 * prod(res(pixelGroupMap))
   
-  # browser()
   # Use rasterizeReduced to create the map.
   lichenBiomassMap <- SpaDES.tools::rasterizeReduced(
     reduced = uniqueValsDT,
