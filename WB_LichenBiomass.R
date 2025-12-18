@@ -1,6 +1,6 @@
 defineModule(sim, list(
   name = "WB_LichenBiomass",
-  description = paste("Compute lichen biomass according to the Greuel & Degre-Timmons model (2021)"),
+  description = paste("Compute lichen biomass according to the Greuel, Degre-Timmons model (2021)"),
   keywords = c("lichen", "biomass", "western boreal"),
   authors =  c(
     person("Pierre", "Racine", email= "pierre.racine@sbf.ulaval.ca", role = "aut"),
