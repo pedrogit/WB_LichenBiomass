@@ -1,0 +1,5 @@
+The files "meanBiomassPerMVILCC.csv" and "meanBiomassPerNTEMSLCC.csv" list the measured mean lichen biomass by land cover classes for non-forested areas in the Canadian Western Boreal area.
+
+Since the MVI land cover product is not publicly available, the NTEMS land cover raster is used by default. If you want to use the MVI land cover instead, you must provide it as sim$WB_NonForestedVegClassesBaseLCCMap to the "WB_NonForestedVegClasses" module. You must also provide the biomass table (meanBiomassPerMVIVegClasses.csv) as sim$WB_MeanBiomassPerVegClasses to the "WB_LichenBiomass" module.
+
+Lichen biomass for forested areas are estimated by a statistical model described in Greuel, Ruth J. et al. (2021), Predicting patterns of terrestrial lichen biomass recovery following boreal wildfires, Ecosphere, https://doi.org/10.1002/ecs2.3481. However, biomass means for some HartJohnstone forest classes (1, 2 and 5) could not be estimated using the statistical model. They are estimated by fixed values listed in these files instead.

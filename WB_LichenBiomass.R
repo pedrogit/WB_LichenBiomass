@@ -191,7 +191,7 @@ reComputeLichenBiomassMap <- function(sim) {
   # user. 
   ##############################################################################
   if(!suppliedElsewhere("WB_MeanBiomassPerVegClasses")){
-    sim$WB_MeanBiomassPerVegClasses <- fread(file.path(dataPath(sim), "meanBiomassPerVegClasses.csv"))
+    sim$WB_MeanBiomassPerVegClasses <- fread(file.path(dataPath(sim), "meanBiomassPerNTEMSLCC.csv"))
   }
   return(invisible(sim))
 }

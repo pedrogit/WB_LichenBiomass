@@ -1,0 +1,17 @@
+﻿id,veg_class,description,classification,mean_lichen_biomass
+1,0,unclassified,NTEMS,0
+2,20,water,NTEMS,0
+3,31,snow-ice,NTEMS,0
+4,32,rock-rubble,NTEMS,0
+5,33,exposed-barren-land,NTEMS,100
+6,40,bryoids,NTEMS,650
+7,50,shrubs,NTEMS,350
+8,80,wetland,NTEMS,450
+9,81,wetland-treed,NTEMS,700
+10,100,herbs,NTEMS,0
+11,210,coniferous,NTEMS,400
+12,220,broadleaf,NTEMS,0
+13,230,mixedwood,NTEMS,50
+14,1,decidous,HartJohnstone,110.34
+15,2,mixed,HartJohnstone,216.6
+16,5,larch,HartJohnstone,6.75
