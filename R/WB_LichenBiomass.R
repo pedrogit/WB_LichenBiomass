@@ -119,7 +119,10 @@ computeLichenBiomassMap <- function(
   # The model does not predict values for some forest 1 (deci), 2 (mixed) and 
   # 5 (larch) and vegetabion classes, we take them from the provided table.
   uniqueValsDT[biomassMeansPerVegClassesDT, on = "veg_class", biomass := i.mean_lichen_biomass]
-  
+
+# browser()
+  # uniqueValsDT[order(veg_class, age), .(veg_class, age, biomass = format(biomass, scientific = FALSE))]
+
   # Biomass is in kg/ha. We have to divide by 10000 and multiply by the pixel size
   uniqueValsDT$biomass <- uniqueValsDT$biomass / 10000 * prod(res(pixelGroupMap))
   
