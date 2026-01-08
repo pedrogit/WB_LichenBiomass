@@ -1,8 +1,8 @@
 # ---------------------------------------------------
 # 1. Model coefficients from Greuel et al. (2021)
 # ---------------------------------------------------
-# Logistic regression for presence/absence (g2)
-g2_coefs <- list(
+# Logistic regression for presence/absence (lichen_prob)
+lichen_prob_coefs <- list(
   Intercept = 0,                       # baseline = "conimix" (level 3)
   standtypeDeciduous = -0.801061,      # level 1 
   standtypeDeciduous_conifer_mix = -0.380172, # level 2
@@ -16,37 +16,37 @@ g2_coefs <- list(
   TSSRF = 0.014524
 )
 
-# Non-linear biomass model (m4)
-m4_alpha <- list(
+# Non-linear biomass model (predicted_biomass)
+predicted_biomass_alpha <- list(
   Intercept = 912.7731,              # baseline = "conimix" (level 3)
   standtypeJack_pine = 519.2378,     # level 4
   standtypePoorly_drained_spruce = 1379.2158, # level 7
   standtypeWell_drained_spruce = 178.3520     # level 6
 )
-m4_xmid <- list(
+predicted_biomass_xmid <- list(
   Intercept = 28.0413,
   ecoprovinceCoppermine = 17.2021,
   ecoprovinceGreat_Bear_Plains = 44.9796,
   ecoprovinceHay_Slave_River = 41.7653
 )
-m4_scal <- 3.0647
+predicted_biomass_scal <- 3.0647
 
 # Function predicting lichen biomass (kg/ha) from ecoprovince, stand type and TSSRF vectors.
 # TSSRF (Time Since Stand-Replacing Fire) is approximated by the cohortData age column.
 predict_lichen_biomass <- function(ecoprov, standtype, TSSRF) {
   # --- Logistic regression (presence probability) ---
-  logit <- g2_coefs$Intercept +
-    ifelse(standtype == 1, g2_coefs$standtypeDeciduous, 0) +
-    ifelse(standtype == 2, g2_coefs$standtypeDeciduous_conifer_mix, 0) +
-    ifelse(standtype == 4, g2_coefs$standtypeJack_pine, 0) +
-    ifelse(standtype == 5, g2_coefs$standtypeLarch, 0) +
-    ifelse(standtype == 6, g2_coefs$standtypeWell_drained_spruce, 0) +
-    ifelse(standtype == 7, g2_coefs$standtypePoorly_drained_spruce, 0) +
+  logit <- lichen_prob_coefs$Intercept +
+    ifelse(standtype == 1, lichen_prob_coefs$standtypeDeciduous, 0) +
+    ifelse(standtype == 2, lichen_prob_coefs$standtypeDeciduous_conifer_mix, 0) +
+    ifelse(standtype == 4, lichen_prob_coefs$standtypeJack_pine, 0) +
+    ifelse(standtype == 5, lichen_prob_coefs$standtypeLarch, 0) +
+    ifelse(standtype == 6, lichen_prob_coefs$standtypeWell_drained_spruce, 0) +
+    ifelse(standtype == 7, lichen_prob_coefs$standtypePoorly_drained_spruce, 0) +
     ifelse(ecoprov == 0, 0,
-           ifelse(ecoprov == 1, g2_coefs$ecoprovinceCoppermine,
-                  ifelse(ecoprov == 2, g2_coefs$ecoprovinceGreat_Bear_Plains,
-                         g2_coefs$ecoprovinceHay_Slave_River))) +
-    g2_coefs$TSSRF * TSSRF
+           ifelse(ecoprov == 1, lichen_prob_coefs$ecoprovinceCoppermine,
+                  ifelse(ecoprov == 2, lichen_prob_coefs$ecoprovinceGreat_Bear_Plains,
+                         lichen_prob_coefs$ecoprovinceHay_Slave_River))) +
+    lichen_prob_coefs$TSSRF * TSSRF
   
   p_presence <- 1 / (1 + exp(-logit))
   
@@ -56,18 +56,18 @@ predict_lichen_biomass <- function(ecoprov, standtype, TSSRF) {
   alpha <- rep(NA, length(standtype))
   xmid  <- rep(NA, length(standtype))
   
-  alpha[valid] <- m4_alpha$Intercept +
-    ifelse(standtype[valid] == 4, m4_alpha$standtypeJack_pine, 0) +
-    ifelse(standtype[valid] == 6, m4_alpha$standtypeWell_drained_spruce, 0) +
-    ifelse(standtype[valid] == 7, m4_alpha$standtypePoorly_drained_spruce, 0)
+  alpha[valid] <- predicted_biomass_alpha$Intercept +
+    ifelse(standtype[valid] == 4, predicted_biomass_alpha$standtypeJack_pine, 0) +
+    ifelse(standtype[valid] == 6, predicted_biomass_alpha$standtypeWell_drained_spruce, 0) +
+    ifelse(standtype[valid] == 7, predicted_biomass_alpha$standtypePoorly_drained_spruce, 0)
   
-  xmid[valid] <- m4_xmid$Intercept +
-    ifelse(ecoprov[valid] == 1, m4_xmid$ecoprovinceCoppermine,
-           ifelse(ecoprov[valid] == 2, m4_xmid$ecoprovinceGreat_Bear_Plains,
-                  m4_xmid$ecoprovinceHay_Slave_River))
+  xmid[valid] <- predicted_biomass_xmid$Intercept +
+    ifelse(ecoprov[valid] == 1, predicted_biomass_xmid$ecoprovinceCoppermine,
+           ifelse(ecoprov[valid] == 2, predicted_biomass_xmid$ecoprovinceGreat_Bear_Plains,
+                  predicted_biomass_xmid$ecoprovinceHay_Slave_River))
   
   biomass <- rep(NA, length(standtype))
-  biomass[valid] <- alpha[valid] / (1 + exp((xmid[valid] - TSSRF[valid]) / m4_scal))
+  biomass[valid] <- alpha[valid] / (1 + exp((xmid[valid] - TSSRF[valid]) / predicted_biomass_scal))
   
   # --- Combine (expected biomass = probability × biomass) ---
   expected_biomass <- p_presence * biomass

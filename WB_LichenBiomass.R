@@ -84,8 +84,7 @@ Init <- function(sim){
     source("https://raw.githubusercontent.com/pedrogit/WB_HartJohnstoneForestClasses/refs/heads/main/R/WB_HartJohnstoneForestClasses.r")
     sim$WB_HartJohnstoneForestClassesMap <- classifyStand(
       cohortData = sim$cohortData, 
-      pixelGroupMap = sim$pixelGroupMap,
-      time = time(sim)
+      pixelGroupMap = sim$pixelGroupMap
     )
   }
   return(invisible(sim))
