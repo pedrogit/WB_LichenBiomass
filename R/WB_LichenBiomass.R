@@ -253,7 +253,7 @@ computeLichenBiomassMap <- function(
   # uniqueValsDT[order(veg_class, age), .(veg_class, age, biomass = format(biomass, scientific = FALSE))]
 
   # Biomass is in kg/ha. We have to divide by 10000 and multiply by the pixel size
-  uniqueValsDT$biomass <- uniqueValsDT$biomass / 10000 * prod(res(pixelGroupMap))
+  # uniqueValsDT$biomass <- uniqueValsDT$biomass / 10000 * prod(res(pixelGroupMap))
   
   # Use rasterizeReduced to create the map.
   lichenBiomassMap <- SpaDES.tools::rasterizeReduced(
