@@ -93,7 +93,6 @@ predict_lichen_biomass <- function(ecoprov, standtype, TSSRF){
   # -----------------------------
   # Logistic regression (presence)
   # -----------------------------
-browser()
   logit <- lichen_prob_coefs$Intercept +
 
     ifelse(standtype==1, lichen_prob_coefs$standtypeDeciduous, 0) +
