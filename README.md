@@ -30,8 +30,8 @@ WB_LichenBiomass is dynamic because it depends on inputs by the biomass_core mod
 * Pierre Racine <pierre.racine@sbf.ulaval.ca> [aut, cre]
 * Andres Caseiro Guilhem <andres.caseiro-guilhem.1@ulaval.ca> [aut]
 * Steven G. Cumming <stevec.boreal@gmail.com> [aut]
-* Ruth J. Greuel
-* Geneviève É. Degré-Timmons
+* Ruth J. Greuel [aut]
+* Geneviève É. Degré-Timmons [aut]
 
 Racine, P., Caseiro Guilhem, A., Cumming, S.G., Greuel, Ruth J., Degré-Timmons, Geneviève É. (2026) *WB_LichenBiomass: A SpaDES module to compute lichen biomass density in western boreal forests of Canada.* SpaDES Module.
 
